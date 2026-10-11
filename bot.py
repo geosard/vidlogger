@@ -87,7 +87,7 @@ def processar_ia(caminho_arquivo):
                 "content": f"Aqui está a transcrição do vídeo:\n\n{transcricao}"
             }
         ],
-        model="llama-3.1-8b-instant",
+        model="mixtral-8x7b-32768",
         temperature=0.5,
         max_tokens=2000
     )
