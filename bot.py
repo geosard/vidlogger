@@ -49,9 +49,8 @@ def processar_ia(caminho_arquivo, extensao):
     """Upload e análise focada nos motores atualizados do Gemini"""
     max_tentativas_por_modelo = 3
     modelos_disponiveis = [
-        'gemini-2.5-flash',
-        'gemini-2.0-flash',
-        'gemini-2.5-pro'
+        'gemini-3.8-flash',
+        'gemini-3.8-pro'
     ]
     arquivo_gemini = None
     
