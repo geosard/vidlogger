@@ -35,15 +35,14 @@ def baixar_audio(url):
         'quiet': True,
         'overwrites': True,
         'noplaylist': True,
-        # TRUQUE NOVO: Finge ser o aplicativo de Android para evitar o bloqueio web
-        'extractor_args': {'youtube': ['player_client=android']}
+        # TRUQUE ATUALIZADO: Combina clientes para burlar o bloqueio web
+        'extractor_args': {'youtube': ['player_client=android,web']}
     }
     
-    # Lógica para escolher o cookie certo
+    # Usa cookies APENAS no Instagram. 
+    # O YouTube baixará vídeos públicos nativamente disfarçado de Android.
     if "instagram.com" in url:
         ydl_opts['cookiefile'] = 'cookies_inst.txt'
-    else:
-        ydl_opts['cookiefile'] = 'cookies_yt.txt'
         
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
