@@ -87,7 +87,7 @@ def processar_ia(caminho_arquivo):
                 "content": f"Aqui está a transcrição do vídeo:\n\n{transcricao}"
             }
         ],
-        model="mixtral-8x7b-32768",
+        model="openai/gpt-oss-20b",
         temperature=0.5,
         max_tokens=2000
     )
