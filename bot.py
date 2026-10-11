@@ -34,7 +34,9 @@ def baixar_audio(url):
         'ffmpeg_location': FFMPEG_PATH,
         'quiet': True,
         'overwrites': True,
-        'noplaylist': True
+        'noplaylist': True,
+        # TRUQUE NOVO: Finge ser o aplicativo de Android para evitar o bloqueio web
+        'extractor_args': {'youtube': ['player_client=android']}
     }
     
     # Lógica para escolher o cookie certo
