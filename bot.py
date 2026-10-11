@@ -30,14 +30,16 @@ groq_client = Groq(api_key=GROQ_API_KEY)
 
 def baixar_audio(url):
     """Baixa o áudio exclusivamente do Instagram e TikTok"""
-    ydl_opts = {
+ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': 'audio_temp.%(ext)s',
         'ffmpeg_location': FFMPEG_PATH,
         'quiet': True,
         'overwrites': True,
         'noplaylist': True,
-        # O Whisper suporta arquivos de até 25MB. m4a ajuda a manter o tamanho compacto.
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        },
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'm4a',
