@@ -188,9 +188,12 @@ def processar_ia(caminho_arquivo, modo, idioma_alvo=None):
         system_prompt = (
             f"És um professor de idiomas. Aqui está uma transcrição de um vídeo. "
             f"A tua tarefa é quebrar o texto em parágrafos lógicos ou frases curtas. Para CADA bloco, "
-            f"escreve primeiro o texto no idioma original em negrito e logo abaixo a tradução para o {nome_idioma}. "
-            f"Usa o formato rigoroso:\n\n**Original:** [texto na língua falada]\n**Tradução:** [texto em {nome_idioma}]\n\n"
-            f"Faz isso para todo o texto, bloco por bloco."
+            f"escreve o texto no idioma original em negrito, adiciona uma linha com o separador '--', e a seguir a tradução para o {nome_idioma}. "
+            f"NÃO utilizes rótulos como 'Original' ou 'Tradução'. Usa EXATAMENTE este formato visual:\n\n"
+            f"**[texto na língua falada]**\n"
+            f"--\n"
+            f"[texto em {nome_idioma}]\n\n"
+            f"Repete este padrão para todo o texto, deixando uma linha em branco entre os blocos."
         )
     else: # modo 3
         nome_idioma = IDIOMAS.get(idioma_alvo, "Português")
@@ -359,5 +362,5 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
     
-    print("🤖 Tradubot em execução (Modo 10 Idiomas Globais)...")
+    print("🤖 Tradubot em execução (Modo 10 Idiomas com formatação limpa e --)...")
     app.run_polling()
