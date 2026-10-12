@@ -294,16 +294,45 @@ async def iniciar_processamento(message, user_id):
     audio_file = None
     try:
         audio_file = await asyncio.to_thread(baixar_audio, url)
-        
         resultado_ia = await asyncio.to_thread(processar_ia, audio_file, modo, idioma)
 
-        if len(resultado_ia) > 4000:
-            resultado_ia = resultado_ia[:4000] + "\n\n[Texto cortado por excesso de tamanho]"
+        # === LÓGICA DE DIVISÃO DE MENSAGENS (LIMITE DE 4096 CARACTERES) ===
+        MAX_LENGTH = 4000
+        partes = []
+        texto_restante = resultado_ia
+        
+        while len(texto_restante) > MAX_LENGTH:
+            # Procura a última quebra de linha (\n) antes do limite de 4000 caracteres
+            ponto_corte = texto_restante.rfind('\n', 0, MAX_LENGTH)
+            
+            # Se não encontrar quebra de linha, corta seco no limite
+            if ponto_corte == -1:
+                ponto_corte = MAX_LENGTH
+            
+            partes.append(texto_restante[:ponto_corte])
+            texto_restante = texto_restante[ponto_corte:].lstrip()
+            
+        partes.append(texto_restante)
 
-        try:
-            await message.reply_text(f"{resultado_ia}", parse_mode="Markdown")
-        except:
-            await message.reply_text(f"{resultado_ia}")
+        # Envia cada parte sequencialmente
+        for i, parte in enumerate(partes):
+            texto_envio = parte
+            
+            # Se tiver mais de uma parte, adiciona um cabeçalho para guiar o usuário
+            if len(partes) > 1:
+                texto_envio = f"*(Parte {i+1}/{len(partes)})*\n\n{parte}"
+            
+            try:
+                await message.reply_text(texto_envio, parse_mode="Markdown")
+            except Exception as telegram_err:
+                if "parse entities" in str(telegram_err).lower():
+                    logging.warning("Falha na formatação Markdown. Enviando texto puro.")
+                    await message.reply_text(texto_envio)
+                else:
+                    raise telegram_err
+            
+            # Pausa de meio segundo entre as mensagens para evitar bloqueio por Flood do Telegram
+            await asyncio.sleep(0.5)
 
     except Exception as e:
         logging.error(f"Erro: {e}")
@@ -332,5 +361,5 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
     
-    print("🤖 Tradubot em execução (Modo Multi-Idiomas)...")
+    print("🤖 Tradubot em execução (Modo Multi-Idiomas com divisão inteligente de mensagens)...")
     app.run_polling()
