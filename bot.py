@@ -83,7 +83,6 @@ def verificar_acesso(user_id):
     resultado = cursor.fetchone()
     
     if resultado is None:
-        # Não desconta aqui ainda, descontamos apenas quando o processamento iniciar
         cursor.execute('INSERT INTO usuarios (user_id, creditos, data_ultimo_uso) VALUES (?, ?, ?)', 
                        (user_id, CREDITOS_FREE_DIARIOS, hoje))
         conn.commit()
@@ -157,10 +156,9 @@ def baixar_audio(url):
         return base + ".m4a"
 
 def processar_ia(caminho_arquivo, modo, idioma_alvo=None):
-    logging.info("Enviando áudio para transcrição (Whisper)...")
+    logging.info("A enviar áudio para transcrição (Whisper)...")
     
     with open(caminho_arquivo, "rb") as audio_file:
-        # ATENÇÃO: Removi o language="pt" para o Whisper detectar o idioma original automaticamente!
         transcricao = groq_client.audio.transcriptions.create(
             file=(caminho_arquivo, audio_file.read()),
             model="whisper-large-v3",
@@ -170,29 +168,31 @@ def processar_ia(caminho_arquivo, modo, idioma_alvo=None):
     if not transcricao or len(transcricao.strip()) < 10:
         raise Exception("O áudio estava vazio ou a transcrição falhou.")
 
-    logging.info("Áudio transcrito. Gerando processamento com LLM...")
+    logging.info("Áudio transcrito. A gerar processamento com LLM...")
 
     # Escolha do prompt com base no modo
     if modo == "1":
         system_prompt = (
-            "Você é um assistente de edição de texto. Aqui está uma transcrição bruta gerada por IA. "
-            "Apenas formate o texto com pontuação correta e divida em parágrafos para facilitar a leitura. "
-            "Mantenha o texto EXATAMENTE no idioma original em que foi falado. NÃO traduza e NÃO resuma."
+            "És um formatador de texto estritamente literal. A tua ÚNICA tarefa é pegar na transcrição bruta de áudio "
+            "e adicionar quebras de parágrafo (linhas em branco) para facilitar a leitura. "
+            "REGRA ABSOLUTA: É expressamente proibido alterar, adicionar, remover ou substituir qualquer palavra. "
+            "Deves manter o vocabulário, as gírias, os erros gramaticais e as repetições originais intactos. "
+            "Devolve o texto 100% fiel ao original, apenas organizado visualmente em parágrafos."
         )
     elif modo == "2":
         nome_idioma = IDIOMAS.get(idioma_alvo, "Português")
         system_prompt = (
-            f"Você é um professor de idiomas. Aqui está uma transcrição de um vídeo. "
-            f"Sua tarefa é quebrar o texto em parágrafos lógicos ou frases curtas. Para CADA bloco, "
-            f"escreva primeiro o texto no idioma original em negrito e logo abaixo a tradução para o {nome_idioma}. "
-            f"Use o formato rigoroso:\n\n**Original:** [texto na língua falada]\n**Tradução:** [texto em {nome_idioma}]\n\n"
-            f"Faça isso para todo o texto, bloco por bloco."
+            f"És um professor de idiomas. Aqui está uma transcrição de um vídeo. "
+            f"A tua tarefa é quebrar o texto em parágrafos lógicos ou frases curtas. Para CADA bloco, "
+            f"escreve primeiro o texto no idioma original em negrito e logo abaixo a tradução para o {nome_idioma}. "
+            f"Usa o formato rigoroso:\n\n**Original:** [texto na língua falada]\n**Tradução:** [texto em {nome_idioma}]\n\n"
+            f"Faz isso para todo o texto, bloco por bloco."
         )
     else: # modo 3
         nome_idioma = IDIOMAS.get(idioma_alvo, "Português")
         system_prompt = (
-            f"Você é um tradutor profissional nativo. Traduza a transcrição a seguir inteiramente para o {nome_idioma}. "
-            f"Forneça APENAS o texto traduzido final, bem formatado e pontuado, sem incluir partes do texto original."
+            f"És um tradutor profissional nativo. Traduz a transcrição a seguir inteiramente para o {nome_idioma}. "
+            f"Fornece APENAS o texto traduzido final, bem formatado e pontuado em parágrafos, sem incluir partes do texto original."
         )
 
     resposta_llm = groq_client.chat.completions.create(
@@ -200,8 +200,8 @@ def processar_ia(caminho_arquivo, modo, idioma_alvo=None):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Aqui está a transcrição bruta do vídeo:\n\n{transcricao}"}
         ],
-        model="openai/gpt-oss-20b", # Mantido o modelo estável validado
-        temperature=0.3, # Reduzido um pouco para manter a fidelidade da tradução
+        model="openai/gpt-oss-20b",
+        temperature=0.3,
         max_tokens=3000
     )
 
@@ -211,8 +211,8 @@ def processar_ia(caminho_arquivo, modo, idioma_alvo=None):
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     await update.message.reply_text(
-        "👋 Olá! Envie um link do **Instagram** ou **TikTok** e eu farei a transcrição/tradução.\n\n"
-        f"🎁 Você tem limite de traduções gratuitas diárias.",
+        "👋 Olá! Envia um link do **Instagram** ou **TikTok** e eu farei a transcrição/tradução.\n\n"
+        f"🎁 Tens um limite de traduções gratuitas diárias.",
         parse_mode="Markdown"
     )
 
@@ -221,18 +221,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
 
     if not url or ("instagram.com" not in url and "tiktok.com" not in url):
-        await update.message.reply_text("❌ Por favor, envie apenas links válidos do **Instagram** ou **TikTok**.")
+        await update.message.reply_text("❌ Por favor, envia apenas links válidos do **Instagram** ou **TikTok**.")
         return
 
     if not verificar_acesso(user_id):
         link_pagamento = f"{STRIPE_PAYMENT_LINK}?client_reference_id={user_id}"
         keyboard = [
             [InlineKeyboardButton("🪙 Comprar Créditos Avulsos", url=link_pagamento)],
-            [InlineKeyboardButton("💎 Assinar Plano Ilimitado", url=link_pagamento)] # Pode usar outro link Stripe aqui depois
+            [InlineKeyboardButton("💎 Assinar Plano Ilimitado", url=link_pagamento)]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
-            "⚠️ **Limite Gratuito Atingido!**\n\nAdquira créditos avulsos (pagamento único) ou assine o plano premium ilimitado para continuar traduzindo vídeos.",
+            "⚠️ **Limite Gratuito Atingido!**\n\nAdquire créditos avulsos (pagamento único) ou assina o plano premium ilimitado para continuar a traduzir vídeos.",
             parse_mode="Markdown", reply_markup=reply_markup
         )
         return
@@ -242,13 +242,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Opções amigáveis
     keyboard = [
-        [InlineKeyboardButton("📝 1. Texto Original (Só formatar idioma falado)", callback_data="modo_1")],
+        [InlineKeyboardButton("📝 1. Texto Original (Apenas Formatar)", callback_data="modo_1")],
         [InlineKeyboardButton("📚 2. Texto Original + Tradução (Para estudo)", callback_data="modo_2")],
         [InlineKeyboardButton("🌐 3. Apenas Tradução Direta", callback_data="modo_3")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await update.message.reply_text("Escolha o que deseja fazer com este vídeo:", reply_markup=reply_markup)
+    await update.message.reply_text("Escolhe o que desejas fazer com este vídeo:", reply_markup=reply_markup)
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -257,7 +257,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
 
     if user_id not in user_states or 'url' not in user_states[user_id]:
-        await query.edit_message_text("❌ Sessão expirada. Envie o link novamente.")
+        await query.edit_message_text("❌ Sessão expirada. Envia o link novamente.")
         return
 
     if data.startswith("modo_"):
@@ -265,23 +265,21 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_states[user_id]['modo'] = modo
 
         if modo == "1":
-            # Não precisa escolher idioma
-            await query.edit_message_text("⏳ Processando...")
+            await query.edit_message_text("⏳ A processar...")
             await iniciar_processamento(query.message, user_id)
         else:
-            # Pede o idioma
             keyboard = [
                 [InlineKeyboardButton(IDIOMAS["pt"], callback_data="lang_pt"), InlineKeyboardButton(IDIOMAS["en"], callback_data="lang_en")],
                 [InlineKeyboardButton(IDIOMAS["es"], callback_data="lang_es"), InlineKeyboardButton(IDIOMAS["fr"], callback_data="lang_fr")],
                 [InlineKeyboardButton(IDIOMAS["de"], callback_data="lang_de"), InlineKeyboardButton(IDIOMAS["it"], callback_data="lang_it")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text("Para qual idioma deseja traduzir?", reply_markup=reply_markup)
+            await query.edit_message_text("Para qual idioma desejas traduzir?", reply_markup=reply_markup)
 
     elif data.startswith("lang_"):
         idioma = data.split("_")[1]
         user_states[user_id]['idioma'] = idioma
-        await query.edit_message_text(f"⏳ Processando no idioma alvo: {IDIOMAS[idioma]}...")
+        await query.edit_message_text(f"⏳ A processar no idioma alvo: {IDIOMAS[idioma]}...")
         await iniciar_processamento(query.message, user_id)
 
 async def iniciar_processamento(message, user_id):
@@ -289,23 +287,21 @@ async def iniciar_processamento(message, user_id):
     modo = user_states[user_id]['modo']
     idioma = user_states[user_id].get('idioma', 'pt')
     
-    descontar_credito(user_id) # Desconta o crédito no banco
+    descontar_credito(user_id)
 
     audio_file = None
     try:
         audio_file = await asyncio.to_thread(baixar_audio, url)
         resultado_ia = await asyncio.to_thread(processar_ia, audio_file, modo, idioma)
 
-        # === LÓGICA DE DIVISÃO DE MENSAGENS (LIMITE DE 4096 CARACTERES) ===
+        # === LÓGICA DE DIVISÃO DE MENSAGENS ===
         MAX_LENGTH = 4000
         partes = []
         texto_restante = resultado_ia
         
         while len(texto_restante) > MAX_LENGTH:
-            # Procura a última quebra de linha (\n) antes do limite de 4000 caracteres
             ponto_corte = texto_restante.rfind('\n', 0, MAX_LENGTH)
             
-            # Se não encontrar quebra de linha, corta seco no limite
             if ponto_corte == -1:
                 ponto_corte = MAX_LENGTH
             
@@ -314,11 +310,9 @@ async def iniciar_processamento(message, user_id):
             
         partes.append(texto_restante)
 
-        # Envia cada parte sequencialmente
         for i, parte in enumerate(partes):
             texto_envio = parte
             
-            # Se tiver mais de uma parte, adiciona um cabeçalho para guiar o usuário
             if len(partes) > 1:
                 texto_envio = f"*(Parte {i+1}/{len(partes)})*\n\n{parte}"
             
@@ -326,21 +320,19 @@ async def iniciar_processamento(message, user_id):
                 await message.reply_text(texto_envio, parse_mode="Markdown")
             except Exception as telegram_err:
                 if "parse entities" in str(telegram_err).lower():
-                    logging.warning("Falha na formatação Markdown. Enviando texto puro.")
+                    logging.warning("Falha na formatação Markdown. A enviar texto puro.")
                     await message.reply_text(texto_envio)
                 else:
                     raise telegram_err
             
-            # Pausa de meio segundo entre as mensagens para evitar bloqueio por Flood do Telegram
             await asyncio.sleep(0.5)
 
     except Exception as e:
         logging.error(f"Erro: {e}")
-        devolver_credito(user_id) # Devolve se deu erro
-        await message.reply_text(f"❌ Ocorreu um erro: {str(e)}\n\nO seu crédito foi devolvido.")
+        devolver_credito(user_id)
+        await message.reply_text(f"❌ Ocorreu um erro: {str(e)}\n\nO teu crédito foi devolvido.")
         
     finally:
-        # Limpeza segura
         if user_id in user_states:
             del user_states[user_id]
             
@@ -361,5 +353,5 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
     
-    print("🤖 Tradubot em execução (Modo Multi-Idiomas com divisão inteligente de mensagens)...")
+    print("🤖 Tradubot em execução (Modo Multi-Idiomas com divisão inteligente e Formatação Literal)...")
     app.run_polling()
