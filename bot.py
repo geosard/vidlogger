@@ -43,14 +43,18 @@ groq_client = Groq(api_key=GROQ_API_KEY)
 # Dicionário em memória para guardar o estado temporário do utilizador
 user_states = {}
 
-# Mapeamento de idiomas
+# Mapeamento de idiomas (10 opções)
 IDIOMAS = {
     "pt": "🇧🇷 Português",
     "en": "🇺🇸 Inglês",
     "es": "🇪🇸 Espanhol",
     "fr": "🇫🇷 Francês",
     "de": "🇩🇪 Alemão",
-    "it": "🇮🇹 Italiano"
+    "it": "🇮🇹 Italiano",
+    "ru": "🇷🇺 Russo",
+    "ja": "🇯🇵 Japonês",
+    "zh": "🇨🇳 Chinês",
+    "ar": "🇸🇦 Árabe"
 }
 
 # === SETUP DO BANCO DE DADOS ===
@@ -271,7 +275,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = [
                 [InlineKeyboardButton(IDIOMAS["pt"], callback_data="lang_pt"), InlineKeyboardButton(IDIOMAS["en"], callback_data="lang_en")],
                 [InlineKeyboardButton(IDIOMAS["es"], callback_data="lang_es"), InlineKeyboardButton(IDIOMAS["fr"], callback_data="lang_fr")],
-                [InlineKeyboardButton(IDIOMAS["de"], callback_data="lang_de"), InlineKeyboardButton(IDIOMAS["it"], callback_data="lang_it")]
+                [InlineKeyboardButton(IDIOMAS["de"], callback_data="lang_de"), InlineKeyboardButton(IDIOMAS["it"], callback_data="lang_it")],
+                [InlineKeyboardButton(IDIOMAS["ru"], callback_data="lang_ru"), InlineKeyboardButton(IDIOMAS["ja"], callback_data="lang_ja")],
+                [InlineKeyboardButton(IDIOMAS["zh"], callback_data="lang_zh"), InlineKeyboardButton(IDIOMAS["ar"], callback_data="lang_ar")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text("Para qual idioma desejas traduzir?", reply_markup=reply_markup)
@@ -353,5 +359,5 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
     
-    print("🤖 Tradubot em execução (Modo Multi-Idiomas com divisão inteligente e Formatação Literal)...")
+    print("🤖 Tradubot em execução (Modo 10 Idiomas Globais)...")
     app.run_polling()
