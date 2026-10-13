@@ -43,19 +43,84 @@ groq_client = Groq(api_key=GROQ_API_KEY)
 # Dicionário em memória para guardar o estado temporário do utilizador
 user_states = {}
 
-# Mapeamento de idiomas (10 opções)
+# Mapeamento de idiomas de destino - Nomeados no SEU PRÓPRIO IDIOMA para facilitar a qualquer pessoa no mundo
 IDIOMAS = {
     "pt": "🇧🇷 Português",
-    "en": "🇺🇸 Inglês",
-    "es": "🇪🇸 Espanhol",
-    "fr": "🇫🇷 Francês",
-    "de": "🇩🇪 Alemão",
+    "en": "🇺🇸 English",
+    "es": "🇪🇸 Español",
+    "fr": "🇫🇷 Français",
+    "de": "🇩🇪 Deutsch",
     "it": "🇮🇹 Italiano",
-    "ru": "🇷🇺 Russo",
-    "ja": "🇯🇵 Japonês",
-    "zh": "🇨🇳 Chinês",
-    "ar": "🇸🇦 Árabe"
+    "ru": "🇷🇺 Русский",
+    "ja": "🇯🇵 日本語",
+    "zh": "🇨🇳 中文",
+    "ar": "🇸🇦 العربية"
 }
+
+# === SISTEMA DE TRADUÇÃO DA INTERFACE (i18n) ===
+def get_msg(lang_code, key, **kwargs):
+    """Devolve a string traduzida baseada no idioma do telemóvel do utilizador."""
+    msgs = {
+        "pt": {
+            "start": "👋 Olá! Envie um link do **Instagram** ou **TikTok** e eu farei a transcrição/tradução.\n\n🎁 Você tem um limite de traduções gratuitas diárias.",
+            "invalid": "❌ Por favor, envie apenas links válidos do **Instagram** ou **TikTok**.",
+            "limit": "⚠️ **Limite Gratuito Atingido!**\n\nAdquira créditos avulsos ou assine o plano premium para continuar.",
+            "btn_cred": "🪙 Comprar Créditos",
+            "btn_prem": "💎 Assinar Premium",
+            "choose_mode": "Escolha o que deseja fazer com este vídeo:",
+            "m1": "📝 1. Texto Original (Apenas Formatar)",
+            "m2": "📚 2. Original + Tradução (Estudo)",
+            "m3": "🌐 3. Apenas Tradução Direta",
+            "expired": "❌ Sessão expirada. Envie o link novamente.",
+            "proc": "⏳ Processando...",
+            "choose_lang": "Para qual idioma deseja traduzir?",
+            "proc_lang": "⏳ Processando no idioma alvo: {lang}...",
+            "err": "❌ Ocorreu um erro: {e}\n\nSeu crédito foi devolvido.",
+            "part": "*(Parte {i}/{total})*"
+        },
+        "en": {
+            "start": "👋 Hello! Send a **TikTok** or **Instagram** link and I'll transcribe/translate it.\n\n🎁 You have a daily free limit.",
+            "invalid": "❌ Please send only valid **Instagram** or **TikTok** links.",
+            "limit": "⚠️ **Free Limit Reached!**\n\nBuy extra credits or subscribe to premium to continue.",
+            "btn_cred": "🪙 Buy Extra Credits",
+            "btn_prem": "💎 Premium Subscription",
+            "choose_mode": "Choose what you want to do with this video:",
+            "m1": "📝 1. Original Text (Format Only)",
+            "m2": "📚 2. Original + Translation (Study)",
+            "m3": "🌐 3. Direct Translation Only",
+            "expired": "❌ Session expired. Please send the link again.",
+            "proc": "⏳ Processing...",
+            "choose_lang": "Which language do you want to translate to?",
+            "proc_lang": "⏳ Processing to target language: {lang}...",
+            "err": "❌ An error occurred: {e}\n\nYour credit was refunded.",
+            "part": "*(Part {i}/{total})*"
+        },
+        "es": {
+            "start": "👋 ¡Hola! Envía un enlace de **Instagram** o **TikTok** y haré la transcripción/traducción.\n\n🎁 Tienes un límite diario gratuito.",
+            "invalid": "❌ Por favor, envía solo enlaces válidos de **Instagram** o **TikTok**.",
+            "limit": "⚠️ **¡Límite Gratuito Alcanzado!**\n\nAdquiere créditos o suscríbete a premium para continuar.",
+            "btn_cred": "🪙 Comprar Créditos",
+            "btn_prem": "💎 Suscripción Premium",
+            "choose_mode": "Elige qué deseas hacer con este video:",
+            "m1": "📝 1. Texto Original (Solo Formato)",
+            "m2": "📚 2. Original + Traducción (Estudio)",
+            "m3": "🌐 3. Solo Traducción Directa",
+            "expired": "❌ Sesión expirada. Envía el enlace de nuevo.",
+            "proc": "⏳ Procesando...",
+            "choose_lang": "¿A qué idioma deseas traducir?",
+            "proc_lang": "⏳ Procesando al idioma: {lang}...",
+            "err": "❌ Ocurrió un error: {e}\n\nTu crédito fue devuelto.",
+            "part": "*(Parte {i}/{total})*"
+        }
+    }
+    
+    # Deteta o prefixo do idioma (ex: 'pt-br' vira 'pt'). Se não existir, ou não for pt/es, usa Inglês.
+    lang = (lang_code[:2] if lang_code else "en").lower()
+    if lang not in msgs:
+        lang = "en"
+        
+    text = msgs[lang].get(key, msgs["en"][key])
+    return text.format(**kwargs) if kwargs else text
 
 # === SETUP DO BANCO DE DADOS ===
 def inicializar_banco():
@@ -184,7 +249,7 @@ def processar_ia(caminho_arquivo, modo, idioma_alvo=None):
             "Devolve o texto 100% fiel ao original, apenas organizado visualmente em parágrafos."
         )
     elif modo == "2":
-        nome_idioma = IDIOMAS.get(idioma_alvo, "Português")
+        nome_idioma = IDIOMAS.get(idioma_alvo, "English")
         system_prompt = (
             f"És um professor de idiomas. Aqui está uma transcrição de um vídeo. "
             f"A tua tarefa é quebrar o texto em parágrafos lógicos ou frases curtas. Para CADA bloco, "
@@ -196,7 +261,7 @@ def processar_ia(caminho_arquivo, modo, idioma_alvo=None):
             f"Repete este padrão para todo o texto, deixando uma linha em branco entre os blocos."
         )
     else: # modo 3
-        nome_idioma = IDIOMAS.get(idioma_alvo, "Português")
+        nome_idioma = IDIOMAS.get(idioma_alvo, "English")
         system_prompt = (
             f"És um tradutor profissional nativo. Traduz a transcrição a seguir inteiramente para o {nome_idioma}. "
             f"Fornece APENAS o texto traduzido final, bem formatado e pontuado em parágrafos, sem incluir partes do texto original."
@@ -217,54 +282,56 @@ def processar_ia(caminho_arquivo, modo, idioma_alvo=None):
 # === HANDLERS DO TELEGRAM ===
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
+    user_lang = update.message.from_user.language_code
     await update.message.reply_text(
-        "👋 Olá! Envia um link do **Instagram** ou **TikTok** e eu farei a transcrição/tradução.\n\n"
-        f"🎁 Tens um limite de traduções gratuitas diárias.",
+        get_msg(user_lang, 'start'),
         parse_mode="Markdown"
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text
     user_id = update.message.from_user.id
+    user_lang = update.message.from_user.language_code
 
     if not url or ("instagram.com" not in url and "tiktok.com" not in url):
-        await update.message.reply_text("❌ Por favor, envia apenas links válidos do **Instagram** ou **TikTok**.")
+        await update.message.reply_text(get_msg(user_lang, 'invalid'))
         return
 
     if not verificar_acesso(user_id):
         link_pagamento = f"{STRIPE_PAYMENT_LINK}?client_reference_id={user_id}"
         keyboard = [
-            [InlineKeyboardButton("🪙 Comprar Créditos Avulsos", url=link_pagamento)],
-            [InlineKeyboardButton("💎 Assinar Plano Ilimitado", url=link_pagamento)]
+            [InlineKeyboardButton(get_msg(user_lang, 'btn_cred'), url=link_pagamento)],
+            [InlineKeyboardButton(get_msg(user_lang, 'btn_prem'), url=link_pagamento)]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
-            "⚠️ **Limite Gratuito Atingido!**\n\nAdquire créditos avulsos (pagamento único) ou assina o plano premium ilimitado para continuar a traduzir vídeos.",
+            get_msg(user_lang, 'limit'),
             parse_mode="Markdown", reply_markup=reply_markup
         )
         return
 
     # Salva o estado do utilizador temporariamente
-    user_states[user_id] = {'url': url}
+    user_states[user_id] = {'url': url, 'lang_code': user_lang}
 
-    # Opções amigáveis
+    # Opções amigáveis no idioma do utilizador
     keyboard = [
-        [InlineKeyboardButton("📝 1. Texto Original (Apenas Formatar)", callback_data="modo_1")],
-        [InlineKeyboardButton("📚 2. Texto Original + Tradução (Para estudo)", callback_data="modo_2")],
-        [InlineKeyboardButton("🌐 3. Apenas Tradução Direta", callback_data="modo_3")]
+        [InlineKeyboardButton(get_msg(user_lang, 'm1'), callback_data="modo_1")],
+        [InlineKeyboardButton(get_msg(user_lang, 'm2'), callback_data="modo_2")],
+        [InlineKeyboardButton(get_msg(user_lang, 'm3'), callback_data="modo_3")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await update.message.reply_text("Escolhe o que desejas fazer com este vídeo:", reply_markup=reply_markup)
+    await update.message.reply_text(get_msg(user_lang, 'choose_mode'), reply_markup=reply_markup)
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
+    user_lang = query.from_user.language_code
     data = query.data
 
     if user_id not in user_states or 'url' not in user_states[user_id]:
-        await query.edit_message_text("❌ Sessão expirada. Envia o link novamente.")
+        await query.edit_message_text(get_msg(user_lang, 'expired'))
         return
 
     if data.startswith("modo_"):
@@ -272,9 +339,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_states[user_id]['modo'] = modo
 
         if modo == "1":
-            await query.edit_message_text("⏳ A processar...")
-            await iniciar_processamento(query.message, user_id)
+            await query.edit_message_text(get_msg(user_lang, 'proc'))
+            await iniciar_processamento(query.message, user_id, user_lang)
         else:
+            # Lista universal de idiomas
             keyboard = [
                 [InlineKeyboardButton(IDIOMAS["pt"], callback_data="lang_pt"), InlineKeyboardButton(IDIOMAS["en"], callback_data="lang_en")],
                 [InlineKeyboardButton(IDIOMAS["es"], callback_data="lang_es"), InlineKeyboardButton(IDIOMAS["fr"], callback_data="lang_fr")],
@@ -283,18 +351,18 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton(IDIOMAS["zh"], callback_data="lang_zh"), InlineKeyboardButton(IDIOMAS["ar"], callback_data="lang_ar")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text("Para qual idioma desejas traduzir?", reply_markup=reply_markup)
+            await query.edit_message_text(get_msg(user_lang, 'choose_lang'), reply_markup=reply_markup)
 
     elif data.startswith("lang_"):
         idioma = data.split("_")[1]
         user_states[user_id]['idioma'] = idioma
-        await query.edit_message_text(f"⏳ A processar no idioma alvo: {IDIOMAS[idioma]}...")
-        await iniciar_processamento(query.message, user_id)
+        await query.edit_message_text(get_msg(user_lang, 'proc_lang', lang=IDIOMAS[idioma]))
+        await iniciar_processamento(query.message, user_id, user_lang)
 
-async def iniciar_processamento(message, user_id):
+async def iniciar_processamento(message, user_id, user_lang):
     url = user_states[user_id]['url']
     modo = user_states[user_id]['modo']
-    idioma = user_states[user_id].get('idioma', 'pt')
+    idioma = user_states[user_id].get('idioma', 'en')
     
     descontar_credito(user_id)
 
@@ -323,7 +391,8 @@ async def iniciar_processamento(message, user_id):
             texto_envio = parte
             
             if len(partes) > 1:
-                texto_envio = f"*(Parte {i+1}/{len(partes)})*\n\n{parte}"
+                cabecalho = get_msg(user_lang, 'part', i=i+1, total=len(partes))
+                texto_envio = f"{cabecalho}\n\n{parte}"
             
             try:
                 await message.reply_text(texto_envio, parse_mode="Markdown")
@@ -339,7 +408,7 @@ async def iniciar_processamento(message, user_id):
     except Exception as e:
         logging.error(f"Erro: {e}")
         devolver_credito(user_id)
-        await message.reply_text(f"❌ Ocorreu um erro: {str(e)}\n\nO teu crédito foi devolvido.")
+        await message.reply_text(get_msg(user_lang, 'err', e=str(e)))
         
     finally:
         if user_id in user_states:
@@ -362,5 +431,5 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
     
-    print("🤖 Tradubot em execução (Modo 10 Idiomas com formatação limpa e --)...")
+    print("🤖 Tradubot em execução (10 Idiomas Globais + Interface Multi-Línguas + Layout Limpo)...")
     app.run_polling()
