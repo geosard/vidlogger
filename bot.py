@@ -251,16 +251,20 @@ async def gerar_pix_mercadopago(query, user_id, user_lang):
     
     trans_id = str(uuid.uuid4())
     payment_data = {
-        "transaction_amount": PRECO_BRL,
+        "transaction_amount": float(PRECO_BRL),
         "description": "Credito Tradubot",
         "payment_method_id": "pix",
-        "payer": {"email": f"user_{user_id}@tradubot.com"},
+        "payer": {
+            "email": f"cliente{user_id}@tradubot.online",
+            "first_name": "Cliente",
+            "last_name": "Tradubot"
+        },
         "external_reference": trans_id
     }
     
     try:
         resposta = await asyncio.to_thread(mp_sdk.payment().create, payment_data)
-        pagamento = resposta["response"]
+        pagamento = resposta.get("response", {})
         
         if pagamento.get("status") == "pending":
             copia_cola = pagamento["point_of_interaction"]["transaction_data"]["qr_code"]
@@ -270,10 +274,13 @@ async def gerar_pix_mercadopago(query, user_id, user_lang):
             await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
             logger.info(f"OPERAÇÃO: USER:{user_id} - Fatura Pix Gerada (MP_ID: {pagamento['id']})")
         else:
+            # Se não estiver pending, o MP recusou. Logamos o motivo exato.
+            erro_mp = resposta.get("response", resposta)
+            logger.error(f"RECUSA MERCADO PAGO (User:{user_id}): {erro_mp}")
             await query.message.reply_text(get_msg(user_lang, 'pix_err'))
             
     except Exception as e:
-        logger.error(f"ERRO: Gateway Mercado Pago (User:{user_id}): {e}")
+        logger.error(f"ERRO DE EXCEÇÃO Mercado Pago (User:{user_id}): {e}")
         await query.message.reply_text(get_msg(user_lang, 'pix_err'))
 
 def baixar_audio(url):
@@ -355,7 +362,7 @@ def processar_ia(caminho_arquivo, modo, idioma_alvo=None):
         system_prompt = f"És um formatador estrito. Adiciona quebras de parágrafo. PROIBIDO alterar qualquer palavra. Mantém 100% fiel ao original. {anti_ai_rule}"
     elif modo == "2":
         nome_idioma = IDIOMAS.get(idioma_alvo, "English")
-        system_prompt = f"Formato rigoroso por blocos curtos:\n**[texto original]**\n--\n[texto em {nome_idioma}]\n\nDeixe linha em branco entre blocos. {anti_ai_rule}"
+        system_prompt = f"É OBRIGATÓRIO fatiar o texto frase a frase. NÃO agrupe parágrafos longos. Siga EXATAMENTE este padrão intercalado para 100% do texto:\n\n**[Frase original 1]**\n--\n[Tradução 1 em {nome_idioma}]\n\n**[Frase original 2]**\n--\n[Tradução 2 em {nome_idioma}]\n\n{anti_ai_rule}"
     else: 
         nome_idioma = IDIOMAS.get(idioma_alvo, "English")
         system_prompt = f"Traduz tudo para {nome_idioma}. APENAS o texto traduzido final formatado em parágrafos. {anti_ai_rule}"
