@@ -5,6 +5,7 @@ import asyncio
 import sqlite3
 import uuid
 import re
+import subprocess
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -301,7 +302,6 @@ def baixar_audio(url):
         if not info:
             raise Exception("Falha ao obter informações do vídeo.")
         
-        # Validação Primária: Pelos metadados fornecidos
         if info.get('is_live') or (info.get('duration') and info.get('duration') > 900):
             raise ValueError("ERR_DURATION")
 
@@ -312,9 +312,31 @@ def baixar_audio(url):
         if not os.path.exists(final_path):
             raise ValueError("ERR_DURATION")
             
-        # Validação Física (Fallback): Redes sociais frequentemente ocultam metadados.
-        # 15 minutos de áudio m4a 128kbps ocupam cerca de 14.4 MB.
-        if os.path.getsize(final_path) > 15 * 1024 * 1024:
+        # Validação Física Rigorosa com ffprobe
+        try:
+            comando = [
+                FFMPEG_PATH.replace('ffmpeg', 'ffprobe'), 
+                "-v", "error", 
+                "-show_entries", "format=duration", 
+                "-of", "default=noprint_wrappers=1:nokey=1", 
+                final_path
+            ]
+            saida = subprocess.check_output(comando, stderr=subprocess.STDOUT).decode('utf-8').strip()
+            duracao_real = float(saida)
+            
+            if duracao_real > 900:
+                os.remove(final_path)
+                raise ValueError("ERR_DURATION")
+                
+        except ValueError as ve:
+            if str(ve) == "ERR_DURATION":
+                raise ve
+            pass
+        except Exception:
+            pass # Se o ffprobe não for encontrado, falha em silêncio e segue para o fallback
+
+        # Fallback Secundário (Tamanho de Segurança de 15MB)
+        if os.path.exists(final_path) and os.path.getsize(final_path) > 15 * 1024 * 1024:
             os.remove(final_path)
             raise ValueError("ERR_DURATION")
             
