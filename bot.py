@@ -301,6 +301,7 @@ def baixar_audio(url):
         if not info:
             raise Exception("Falha ao obter informações do vídeo.")
         
+        # Validação Primária: Pelos metadados fornecidos
         if info.get('is_live') or (info.get('duration') and info.get('duration') > 900):
             raise ValueError("ERR_DURATION")
 
@@ -309,6 +310,12 @@ def baixar_audio(url):
         final_path = base + ".m4a"
         
         if not os.path.exists(final_path):
+            raise ValueError("ERR_DURATION")
+            
+        # Validação Física (Fallback): Redes sociais frequentemente ocultam metadados.
+        # 15 minutos de áudio m4a 128kbps ocupam cerca de 14.4 MB.
+        if os.path.getsize(final_path) > 15 * 1024 * 1024:
+            os.remove(final_path)
             raise ValueError("ERR_DURATION")
             
         return final_path
