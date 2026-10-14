@@ -301,7 +301,6 @@ def baixar_audio(url):
         if not info:
             raise Exception("Falha ao obter informações do vídeo.")
         
-        # Confirmação secundária rígida
         if info.get('is_live') or (info.get('duration') and info.get('duration') > 900):
             raise ValueError("ERR_DURATION")
 
@@ -309,7 +308,6 @@ def baixar_audio(url):
         base, _ = os.path.splitext(filename)
         final_path = base + ".m4a"
         
-        # Se o ficheiro não foi descarregado (rejeitado pelo filtro)
         if not os.path.exists(final_path):
             raise ValueError("ERR_DURATION")
             
@@ -346,6 +344,13 @@ def processar_ia(caminho_arquivo, modo, idioma_alvo=None):
         raise Exception("O módulo de inteligência artificial não retornou dados.")
         
     return texto_final
+
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_lang = update.message.from_user.language_code
+    await update.message.reply_text(
+        get_msg(user_lang, 'start'),
+        parse_mode="Markdown"
+    )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text
