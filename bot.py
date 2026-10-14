@@ -312,7 +312,6 @@ def baixar_audio(url):
         if not os.path.exists(final_path):
             raise ValueError("ERR_DURATION")
             
-        # Validação Física Rigorosa com ffprobe
         try:
             comando = [
                 FFMPEG_PATH.replace('ffmpeg', 'ffprobe'), 
@@ -333,9 +332,8 @@ def baixar_audio(url):
                 raise ve
             pass
         except Exception:
-            pass # Se o ffprobe não for encontrado, falha em silêncio e segue para o fallback
+            pass
 
-        # Fallback Secundário (Tamanho de Segurança de 15MB)
         if os.path.exists(final_path) and os.path.getsize(final_path) > 15 * 1024 * 1024:
             os.remove(final_path)
             raise ValueError("ERR_DURATION")
@@ -347,10 +345,11 @@ def processar_ia(caminho_arquivo, modo, idioma_alvo=None):
         transcricao = groq_client.audio.transcriptions.create(
             file=(caminho_arquivo, audio_file.read()), model="whisper-large-v3", response_format="text" 
         )
+    
     if not transcricao or len(transcricao.strip()) < 10: 
         raise Exception("Arquivo de áudio não detectado ou inaudível.")
     
-    anti_ai_rule = "Aja como um sistema automatizado. Não utilizes saudações, trejeitos humanos ou emojis. Devolve APENAS os dados processados de forma estéril e direta."
+    anti_ai_rule = "Aja como um tradutor automatizado. Responda APENAS com o texto processado, sem introduções ou notas. Se não houver fala clara, responda: [Nenhuma fala identificável]."
 
     if modo == "1":
         system_prompt = f"És um formatador estrito. Adiciona quebras de parágrafo. PROIBIDO alterar qualquer palavra. Mantém 100% fiel ao original. {anti_ai_rule}"
@@ -365,7 +364,7 @@ def processar_ia(caminho_arquivo, modo, idioma_alvo=None):
 
     resposta_llm = groq_client.chat.completions.create(
         messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": entrada_segura}],
-        model="openai/gpt-oss-20b", temperature=0.3, max_tokens=3000
+        model="openai/gpt-oss-20b", temperature=0.3, max_tokens=8000
     )
     
     texto_final = resposta_llm.choices[0].message.content
